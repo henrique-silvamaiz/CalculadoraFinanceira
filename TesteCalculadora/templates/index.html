@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de Propostas</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #242424; color: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
+        .container { background-color: #2b2b2b; border-radius: 12px; padding: 20px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        h1 { color: #f5f5f5; text-align: center; font-size: 1.5rem; margin-bottom: 25px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #d0d0d0; font-size: 0.9rem; }
+        input[type="text"] { width: 100%; background-color: #3a3a3a; border: 1px solid #555; border-radius: 7px; padding: 12px; color: #f0f0f0; font-size: 1rem; box-sizing: border-box; }
+        input[type="text"]:focus { outline: none; border-color: #3498db; }
+        .parcela-aprovada { font-weight: bold; }
+        .btn { display: block; width: 100%; padding: 15px; background-color: #3498db; color: white; border: none; border-radius: 7px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 25px; }
+        .result-box { margin-top: 25px; padding: 20px; border-radius: 7px; text-align: center; }
+        .result-box.success { background-color: rgba(46, 204, 113, 0.15); border: 1px solid #2ECC71; }
+        .result-box.error { background-color: rgba(231, 76, 60, 0.15); border: 1px solid #E74C3C; }
+        .result-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 8px; }
+        .result-title.success { color: #2ECC71; }
+        .result-title.error { color: #E74C3C; }
+        .result-details { font-size: 0.95rem; color: #d0d0d0; }
+        .iniciais-container { margin-top: 20px; padding-top: 15px; border-top: 1px solid #444; }
+        .iniciais-header { font-weight: bold; margin-bottom: 10px; }
+        .inicial-field { display: flex; margin-bottom: 8px; }
+        .inicial-field input { flex-grow: 1; margin-right: 8px; }
+        .btn-small { padding: 10px 15px; background-color: #555; color: white; border: none; border-radius: 7px; cursor: pointer; }
+        .btn-add { background-color: #4CAF50; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Analisador de Propostas</h1>
+        <form id="calc-form">
+            <div class="form-group">
+                <label for="valor_lote">Valor Total do Lote</label>
+                <input type="text" id="valor_lote" class="number-input" placeholder="Ex: 200.000" inputmode="decimal">
+            </div>
+            <div class="form-group">
+                <label for="ato">Valor do Ato (Entrada)</label>
+                <input type="text" id="ato" class="number-input" placeholder="Ex: 20.000" inputmode="decimal">
+            </div>
+            <div class="form-group">
+                <label for="prazo_meses">Prazo (meses)</label>
+                <input type="text" id="prazo_meses" placeholder="Ex: 140" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label for="taxa_anual">Taxa Anual (%)</label>
+                <input type="text" id="taxa_anual" placeholder="Ex: 12 ou 12,0" inputmode="decimal">
+            </div>
+            <div class="form-group">
+                <label for="parcela_aprovada" class="parcela-aprovada">Parcela APROVADA (valor)</label>
+                <input type="text" id="parcela_aprovada" class="number-input" placeholder="Ex: 1.500" inputmode="decimal">
+            </div>
+
+            <div class="iniciais-container">
+                <label class="iniciais-header">Pagamentos Iniciais (além do Ato)</label>
+                <div id="dynamic-iniciais"></div>
+                <button type="button" class="btn-small btn-add" onclick="addInicialField()">+ Adicionar Pagamento</button>
+            </div>
+            
+            <button type="submit" class="btn">Analisar Proposta</button>
+        </form>
+        <div id="result-container" style="display: none;"></div>
+    </div>
+
+    <script>
+        function formatNumber(value) {
+            // Remove tudo que não for dígito
+            let rawValue = value.replace(/\D/g, '');
+            // Adiciona pontos como separadores de milhar
+            return rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        // Adiciona o "ouvinte" de eventos a todos os campos com a classe 'number-input'
+        document.querySelectorAll('.number-input').forEach(input => {
+            input.addEventListener('input', function(e) {
+                e.target.value = formatNumber(e.target.value);
+            });
+        });
+
+        function addInicialField() {
+            const container = document.getElementById('dynamic-iniciais');
+            const newField = document.createElement('div');
+            newField.className = 'inicial-field';
+            
+            // O novo input também terá a classe "number-input"
+            newField.innerHTML = `
+                <input type="text" placeholder="Pag. Inicial ${container.children.length + 1}" class="inicial-input number-input" inputmode="decimal">
+                <button type="button" class="btn-small" onclick="this.parentElement.remove()">-</button>
+            `;
+            container.appendChild(newField);
+            
+            // Adiciona o "ouvinte" de evento ao novo campo que acabamos de criar
+            newField.querySelector('.number-input').addEventListener('input', function(e) {
+                e.target.value = formatNumber(e.target.value);
+            });
+        }
+
+        // Lógica do formulário (sem alterações)
+        document.getElementById('calc-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const resultContainer = document.getElementById('result-container');
+
+            const data = {
+                valor_lote: document.getElementById('valor_lote').value,
+                ato: document.getElementById('ato').value,
+                prazo_meses: document.getElementById('prazo_meses').value,
+                taxa_anual: document.getElementById('taxa_anual').value,
+                parcela_aprovada: document.getElementById('parcela_aprovada').value,
+                iniciais: Array.from(document.getElementsByClassName('inicial-input')).map(input => input.value)
+            };
+
+            const response = await fetch('/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            resultContainer.style.display = 'block';
+            if (response.ok) {
+                const result = await response.json();
+                const statusClass = result.approved ? 'success' : 'error';
+                resultContainer.innerHTML = `
+                    <div class="result-box ${statusClass}">
+                        <div class="result-title ${statusClass}">${result.message}</div>
+                        <div class="result-details">${result.details}</div>
+                    </div>
+                `;
+            } else {
+                 resultContainer.innerHTML = `
+                    <div class="result-box error">
+                        <div class="result-title error">ERRO</div>
+                        <div class="result-details">Não foi possível calcular. Verifique os valores.</div>
+                    </div>
+                `;
+            }
+        });
+        
+        // Adiciona um campo inicial por padrão
+        addInicialField();
+    </script>
+</body>
+</html>
