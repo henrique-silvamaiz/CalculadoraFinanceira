@@ -97,4 +97,7 @@ def calculate():
 
 if __name__ == '__main__':
     # Roda a aplicação acessível na sua rede local
+
     app.run(host='0.0.0.0', port=5000)
+
+## forçar att
