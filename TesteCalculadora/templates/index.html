@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analisador de Propostas</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #242424; color: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
-        .container { background-color: #2b2b2b; border-radius: 12px; padding: 20px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
-        h1 { color: #f5f5f5; text-align: center; font-size: 1.5rem; margin-bottom: 25px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #eddede; color: #090909; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
+        .container { background-color: #ffffff; border-radius: 12px; padding: 20px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(30, 30, 30, 0.927); }
+        h1 { color: #0b0a0a; text-align: center; font-size: 1.5rem; margin-bottom: 25px; }
         .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #d0d0d0; font-size: 0.9rem; }
-        input[type="text"] { width: 100%; background-color: #3a3a3a; border: 1px solid #555; border-radius: 7px; padding: 12px; color: #f0f0f0; font-size: 1rem; box-sizing: border-box; }
+        label { display: block; margin-bottom: 5px; color: #040404; font-size: 0.9rem; }
+        input[type="text"] { width: 100%; background-color: #f1eeee; border: 1px solid #555; border-radius: 7px; padding: 12px; color: #090909; font-size: 1rem; box-sizing: border-box; }
         input[type="text"]:focus { outline: none; border-color: #3498db; }
         .parcela-aprovada { font-weight: bold; }
         .btn { display: block; width: 100%; padding: 15px; background-color: #3498db; color: white; border: none; border-radius: 7px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 25px; }
@@ -20,18 +20,19 @@
         .result-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 8px; }
         .result-title.success { color: #2ECC71; }
         .result-title.error { color: #E74C3C; }
-        .result-details { font-size: 0.95rem; color: #d0d0d0; }
+        .result-details { font-size: 0.95rem; color: #090909; }
         .iniciais-container { margin-top: 20px; padding-top: 15px; border-top: 1px solid #444; }
         .iniciais-header { font-weight: bold; margin-bottom: 10px; }
         .inicial-field { display: flex; margin-bottom: 8px; }
         .inicial-field input { flex-grow: 1; margin-right: 8px; }
         .btn-small { padding: 10px 15px; background-color: #555; color: white; border: none; border-radius: 7px; cursor: pointer; }
         .btn-add { background-color: #4CAF50; }
+        .btn-add:disabled { background-color: #9E9E9E; cursor: not-allowed; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Analisador de Propostas</h1>
+        <h1>CÁLCULO DE CONDIÇÕES DE PAGAMENTO DE LOTE</h1>
         <form id="calc-form">
             <div class="form-group">
                 <label for="valor_lote">Valor Total do Lote</label>
@@ -40,6 +41,11 @@
             <div class="form-group">
                 <label for="ato">Valor do Ato (Entrada)</label>
                 <input type="text" id="ato" class="number-input" placeholder="Ex: 20.000" inputmode="decimal">
+            </div>
+            <div class="iniciais-container">
+                <label class="iniciais-header">Pagamentos Iniciais</label>
+                <div id="dynamic-iniciais"></div>
+                <button type="button" id="add-inicial-btn" class="btn-small btn-add" onclick="addInicialField()">+ Adicionar Pagamento</button>
             </div>
             <div class="form-group">
                 <label for="prazo_meses">Prazo (meses)</label>
@@ -50,15 +56,9 @@
                 <input type="text" id="taxa_anual" placeholder="Ex: 12 ou 12,0" inputmode="decimal">
             </div>
             <div class="form-group">
-                <label for="parcela_aprovada" class="parcela-aprovada">Parcela APROVADA (valor)</label>
+                <label for="parcela_aprovada" class="parcela-aprovada">Parcela Aprovada</label>
                 <input type="text" id="parcela_aprovada" class="number-input" placeholder="Ex: 1.500" inputmode="decimal">
-            </div>
-
-            <div class="iniciais-container">
-                <label class="iniciais-header">Pagamentos Iniciais (além do Ato)</label>
-                <div id="dynamic-iniciais"></div>
-                <button type="button" class="btn-small btn-add" onclick="addInicialField()">+ Adicionar Pagamento</button>
-            </div>
+            </div>              
             
             <button type="submit" class="btn">Analisar Proposta</button>
         </form>
@@ -66,36 +66,53 @@
     </div>
 
     <script>
+        const containerIniciais = document.getElementById('dynamic-iniciais');
+        const addBtn = document.getElementById('add-inicial-btn');
+        const maxFields = 3;
+
         function formatNumber(value) {
-            // Remove tudo que não for dígito
             let rawValue = value.replace(/\D/g, '');
-            // Adiciona pontos como separadores de milhar
             return rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
         }
 
-        // Adiciona o "ouvinte" de eventos a todos os campos com a classe 'number-input'
         document.querySelectorAll('.number-input').forEach(input => {
             input.addEventListener('input', function(e) {
                 e.target.value = formatNumber(e.target.value);
             });
         });
 
+        // Função para verificar e atualizar o estado do botão
+        function checkLimit() {
+            const currentFields = containerIniciais.children.length;
+            addBtn.disabled = currentFields >= maxFields;
+        }
+        
+        // Função para remover um campo e depois verificar o limite
+        function removeInicialField(button) {
+            button.parentElement.remove();
+            checkLimit();
+        }
+
         function addInicialField() {
-            const container = document.getElementById('dynamic-iniciais');
+            if (containerIniciais.children.length >= maxFields) {
+                return; // Não faz nada se o limite já foi atingido
+            }
+
             const newField = document.createElement('div');
             newField.className = 'inicial-field';
             
-            // O novo input também terá a classe "number-input"
             newField.innerHTML = `
-                <input type="text" placeholder="Pag. Inicial ${container.children.length + 1}" class="inicial-input number-input" inputmode="decimal">
-                <button type="button" class="btn-small" onclick="this.parentElement.remove()">-</button>
+                <input type="text" placeholder="Pag. Inicial ${containerIniciais.children.length + 1}" class="inicial-input number-input" inputmode="decimal">
+                <button type="button" class="btn-small" onclick="removeInicialField(this)">-</button>
             `;
-            container.appendChild(newField);
+            containerIniciais.appendChild(newField);
             
-            // Adiciona o "ouvinte" de evento ao novo campo que acabamos de criar
             newField.querySelector('.number-input').addEventListener('input', function(e) {
                 e.target.value = formatNumber(e.target.value);
             });
+            
+            // Verifica o limite depois de adicionar
+            checkLimit();
         }
 
         // Lógica do formulário (sem alterações)
@@ -138,8 +155,9 @@
             }
         });
         
-        // Adiciona um campo inicial por padrão
+        // Adiciona um campo inicial por padrão e verifica o limite
         addInicialField();
+        checkLimit();
     </script>
 </body>
 </html>
