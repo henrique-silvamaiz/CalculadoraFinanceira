@@ -91,10 +91,11 @@ def calculate():
         
         if approved:
             message = 'PROPOSTA APROVADA'
-            details = f'A parcela de R$ {f_parcela_aprovada} é suficiente. (Parcela necessária: R$ {f_parcela_calculada})'
+            details = f'A parcela Calculada de R${f_parcela_calculada} é MENOR que a aprovada de R$ {f_parcela_aprovada}'
+            #'A parcela de R$ {f_parcela_aprovada} é suficiente. (Parcela necessária: R$ {f_parcela_calculada})'
         else:
             message = 'PROPOSTA REPROVADA'
-            details = f'A parcela calculada de R$ {f_parcela_calculada} é MAIOR que a aprovada de R$ {f_parcela_aprovada}.'
+            details = f'A parcela Calculada de R$ {f_parcela_calculada} é MAIOR que a aprovada de R$ {f_parcela_aprovada}.'
             
         return jsonify({
             'status': 'success', 'approved': approved,

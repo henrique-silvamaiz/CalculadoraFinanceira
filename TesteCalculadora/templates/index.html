@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analisador de Propostas</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #eddede; color: #090909; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #ebe3e3; color: #090909; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
         .container { background-color: #ffffff; border-radius: 12px; padding: 20px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(30, 30, 30, 0.927); }
         h1 { color: #0b0a0a; text-align: center; font-size: 1.5rem; margin-bottom: 25px; }
         .form-group { margin-bottom: 15px; }
@@ -13,7 +14,10 @@
         input[type="text"] { width: 100%; background-color: #f1eeee; border: 1px solid #555; border-radius: 7px; padding: 12px; color: #090909; font-size: 1rem; box-sizing: border-box; }
         input[type="text"]:focus { outline: none; border-color: #3498db; }
         .parcela-aprovada { font-weight: bold; }
-        .btn { display: block; width: 100%; padding: 15px; background-color: #3498db; color: white; border: none; border-radius: 7px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 25px; }
+        .btn-group { display: flex; gap: 10px; margin-top: 25px; }
+        .btn { display: block; width: 100%; padding: 15px; color: white; border: none; border-radius: 7px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
+        .btn-primary { background-color: #3498db; }
+        .btn-secondary { background-color: #8395a7; } /* Cor para o botão Limpar */
         .result-box { margin-top: 25px; padding: 20px; border-radius: 7px; text-align: center; }
         .result-box.success { background-color: rgba(46, 204, 113, 0.15); border: 1px solid #2ECC71; }
         .result-box.error { background-color: rgba(231, 76, 60, 0.15); border: 1px solid #E74C3C; }
@@ -21,7 +25,7 @@
         .result-title.success { color: #2ECC71; }
         .result-title.error { color: #E74C3C; }
         .result-details { font-size: 0.95rem; color: #090909; }
-        .iniciais-container { margin-top: 20px; padding-top: 15px; border-top: 1px solid #444; }
+        .iniciais-container { margin-top: 20px; padding-top: 15px; border-top: 1px solid #ccc; }
         .iniciais-header { font-weight: bold; margin-bottom: 10px; }
         .inicial-field { display: flex; margin-bottom: 8px; }
         .inicial-field input { flex-grow: 1; margin-right: 8px; }
@@ -53,14 +57,17 @@
             </div>
             <div class="form-group">
                 <label for="taxa_anual">Taxa Anual (%)</label>
-                <input type="text" id="taxa_anual" placeholder="Ex: 12 ou 12,0" inputmode="decimal">
+                <input type="text" id="taxa_anual" placeholder="Ex: 12 ou 12,0" inputmode="decimal" value="12">
             </div>
             <div class="form-group">
                 <label for="parcela_aprovada" class="parcela-aprovada">Parcela Aprovada</label>
                 <input type="text" id="parcela_aprovada" class="number-input" placeholder="Ex: 1.500" inputmode="decimal">
             </div>              
             
-            <button type="submit" class="btn">Analisar Proposta</button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-secondary" onclick="clearForm()">Limpar</button>
+                <button type="submit" class="btn btn-primary">Analisar Proposta</button>
+            </div>
         </form>
         <div id="result-container" style="display: none;"></div>
     </div>
@@ -81,13 +88,11 @@
             });
         });
 
-        // Função para verificar e atualizar o estado do botão
         function checkLimit() {
             const currentFields = containerIniciais.children.length;
             addBtn.disabled = currentFields >= maxFields;
         }
         
-        // Função para remover um campo e depois verificar o limite
         function removeInicialField(button) {
             button.parentElement.remove();
             checkLimit();
@@ -95,7 +100,7 @@
 
         function addInicialField() {
             if (containerIniciais.children.length >= maxFields) {
-                return; // Não faz nada se o limite já foi atingido
+                return;
             }
 
             const newField = document.createElement('div');
@@ -111,11 +116,32 @@
                 e.target.value = formatNumber(e.target.value);
             });
             
-            // Verifica o limite depois de adicionar
+            checkLimit();
+        }
+        
+        // PASSO 3: FUNÇÃO PARA LIMPAR O FORMULÁRIO
+        function clearForm() {
+            // Limpa todos os campos de texto
+            document.getElementById('valor_lote').value = '';
+            document.getElementById('ato').value = '';
+            document.getElementById('prazo_meses').value = '';
+            document.getElementById('parcela_aprovada').value = '';
+            
+            // Repõe o valor padrão da taxa anual
+            document.getElementById('taxa_anual').value = '12';
+            
+            // Remove todos os campos de pagamentos iniciais
+            containerIniciais.innerHTML = '';
+            // Adiciona um campo de volta
+            addInicialField();
+            
+            // Esconde a caixa de resultado
+            document.getElementById('result-container').style.display = 'none';
+
+            // Garante que o botão de adicionar está ativo
             checkLimit();
         }
 
-        // Lógica do formulário (sem alterações)
         document.getElementById('calc-form').addEventListener('submit', async function(event) {
             event.preventDefault();
             const resultContainer = document.getElementById('result-container');
@@ -155,7 +181,6 @@
             }
         });
         
-        // Adiciona um campo inicial por padrão e verifica o limite
         addInicialField();
         checkLimit();
     </script>
